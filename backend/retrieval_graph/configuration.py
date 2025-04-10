@@ -16,7 +16,7 @@ class AgentConfiguration(BaseConfiguration):
 
     query_model: str = field(
         # default="anthropic/claude-3-5-haiku-20241022",
-        default="gpt-4o-mini",
+        default="xai/grok-3-fast",
         metadata={
             "description": "The language model used for processing and refining queries. Should be in the form: provider/model-name."
         },
@@ -24,7 +24,7 @@ class AgentConfiguration(BaseConfiguration):
 
     response_model: str = field(
         # default="anthropic/claude-3-5-haiku-20241022",
-        default="gpt-4o-mini",
+        default="xai/grok-3",
         metadata={
             "description": "The language model used for generating responses. Should be in the form: provider/model-name."
         },
@@ -70,4 +70,11 @@ class AgentConfiguration(BaseConfiguration):
     response_system_prompt: str = field(
         default=prompts.RESPONSE_SYSTEM_PROMPT,
         metadata={"description": "The system prompt used for generating responses."},
+    )
+
+    get_and_update_pet_info_system_prompt: str = field(
+        default=prompts.GET_AND_UPDATE_PET_INFO_SYSTEM_PROMPT,
+        metadata={
+            "description": "The system prompt used for getting and updating pet information."
+        },
     )

@@ -6,5 +6,6 @@
   "[python]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "charliermarsh.ruff"
-  }
+  },
+  "makefile.configureOnOpen": false
 }

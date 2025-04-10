@@ -5,7 +5,7 @@ definitions for agent state, input state, and router classification schema.
 """
 
 from dataclasses import dataclass, field
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 
 from langchain_core.documents import Document
 from langchain_core.messages import AnyMessage
@@ -13,6 +13,8 @@ from langgraph.graph import add_messages
 from typing_extensions import TypedDict
 
 from backend.utils import reduce_docs
+
+from backend.prompts_local.en import *
 
 
 # Optional, the InputState is a restricted version of the State that is used to
@@ -67,6 +69,27 @@ class Router(TypedDict):
     type: Literal["more-info", "pet-health", "pet-training", "pet-nutrition", "general"]
 
 
+class Pet(TypedDict):
+    """Information about a pet."""
+
+    name: Annotated[Optional[str], PET_NAME_DESCRIPTION]
+    species: Annotated[Optional[str], PET_SPECIES_DESCRIPTION]
+    breed: Annotated[Optional[str], PET_BREED_DESCRIPTION]
+    gender: Annotated[Optional[str], PET_GENDER_DESCRIPTION]
+    age: Annotated[Optional[int], PET_AGE_DESCRIPTION]
+    weight: Annotated[Optional[int], PET_WEIGHT_DESCRIPTION]
+    extra_condition: Annotated[Optional[str], PET_EXTRA_CONDITION_DESCRIPTION]
+
+
+from pydantic import BaseModel
+
+
+class PetList(BaseModel):
+    """A list of pets."""
+
+    pets: list[Pet]
+
+
 # This is the primary state of your agent, where you can store any information
 
 
@@ -83,3 +106,4 @@ class AgentState(InputState):
     answer: str = field(default="")
     """Final answer. Useful for evaluations"""
     query: str = field(default="")
+    pets: list[Pet] = field(default_factory=list)

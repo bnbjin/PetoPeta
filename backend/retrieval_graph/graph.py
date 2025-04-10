@@ -8,13 +8,22 @@ conducting research, and formulating responses.
 
 from typing import Any, Literal, TypedDict, cast
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
+from langchain_core.output_parsers import PydanticOutputParser
 
 from backend.retrieval_graph.configuration import AgentConfiguration
+from backend.retrieval_graph.pet_manager.graph import get_pet_manager_graph
 from backend.retrieval_graph.researcher_graph.graph import graph as researcher_graph
-from backend.retrieval_graph.state import AgentState, InputState, Router
+from backend.retrieval_graph.pet_manager.filter_graph import graph as pet_filter_graph
+from backend.retrieval_graph.state import (
+    AgentState,
+    InputState,
+    Router,
+    Pet,
+    PetList,
+)
 from backend.utils import format_docs, load_chat_model
 
 
@@ -54,21 +63,25 @@ async def analyze_and_route_query(
 
 def route_query(
     state: AgentState,
-) -> Literal["create_research_plan", "ask_for_more_info", "respond_to_general_query"]:
+) -> Literal[
+    "get_and_update_pet_info",
+    "ask_for_more_info",
+    "respond_to_general_query",
+]:
     """Determine the next step based on the query classification.
 
     Args:
         state (AgentState): The current state of the agent, including the router's classification.
 
     Returns:
-        Literal["create_research_plan", "ask_for_more_info", "respond_to_general_query"]: The next step to take.
+        Literal["get_and_update_pet_info", "ask_for_more_info", "respond_to_general_query"]: The next step to take.
 
     Raises:
         ValueError: If an unknown router type is encountered.
     """
     _type = state.router["type"]
     if _type == "pet-nutrition":
-        return "create_research_plan"
+        return "get_and_update_pet_info"
     elif _type == "more-info":
         return "ask_for_more_info"
     elif _type == "general" or _type == "pet-health" or _type == "pet-training":
@@ -125,6 +138,26 @@ async def respond_to_general_query(
     return {"messages": [response]}
 
 
+async def get_and_update_pet_info(
+    state: AgentState,
+    *,
+    config: RunnableConfig,
+) -> dict[str, list[Pet]]:
+    """Get and update pet info."""
+
+    # pet_manager_graph = await get_pet_manager_graph()
+    # chain = pet_manager_graph | PydanticOutputParser(pydantic_object=PetList)
+    # response = await chain.ainvoke({"messages": state.messages})
+
+    # return {"pets": response.model_dump().get("pets", [])}
+
+    response = await pet_filter_graph.ainvoke({"messages": state.messages})
+    target_pets = response.get("target_pets_recorded", []) + response.get(
+        "new_pets_invalid", []
+    )
+    return {"pets": target_pets}
+
+
 async def create_research_plan(
     state: AgentState, *, config: RunnableConfig
 ) -> dict[str, list[str]]:
@@ -143,10 +176,20 @@ async def create_research_plan(
 
         steps: list[str]
 
+    if len(state.pets) == 0:
+        return {"steps": [], "documents": "delete", "query": state.messages[-1].content}
+
     configuration = AgentConfiguration.from_runnable_config(config)
     model = load_chat_model(configuration.query_model).with_structured_output(Plan)
     messages = [
-        {"role": "system", "content": configuration.research_plan_system_prompt}
+        {
+            "role": "system",
+            "content": configuration.research_plan_system_prompt,
+        },
+        {
+            "role": "ai",
+            "content": f"<pet-information> {state.pets[0] if state.pets else 'no pet found information'} </pet-information>",
+        },
     ] + state.messages
     response = cast(
         Plan, await model.ainvoke(messages, {"tags": ["langsmith:nostream"]})
@@ -174,6 +217,10 @@ async def conduct_research(state: AgentState) -> dict[str, Any]:
         - Invokes the researcher_graph with the first step of the research plan.
         - Updates the state with the retrieved documents and removes the completed step.
     """
+
+    if len(state.steps) == 0:
+        return {"documents": [], "steps": []}
+
     result = await researcher_graph.ainvoke({"question": state.steps[0]})
     return {"documents": result["documents"], "steps": state.steps[1:]}
 
@@ -228,6 +275,7 @@ builder = StateGraph(AgentState, input=InputState, config_schema=AgentConfigurat
 builder.add_node(analyze_and_route_query)
 builder.add_node(ask_for_more_info)
 builder.add_node(respond_to_general_query)
+builder.add_node(get_and_update_pet_info)
 builder.add_node(create_research_plan)
 builder.add_node(conduct_research)
 builder.add_node(respond)
@@ -236,6 +284,7 @@ builder.add_edge(START, "analyze_and_route_query")
 builder.add_conditional_edges("analyze_and_route_query", route_query)
 builder.add_edge("ask_for_more_info", END)
 builder.add_edge("respond_to_general_query", END)
+builder.add_edge("get_and_update_pet_info", "create_research_plan")
 builder.add_edge("create_research_plan", "conduct_research")
 builder.add_conditional_edges("conduct_research", check_finished)
 builder.add_edge("respond", END)
