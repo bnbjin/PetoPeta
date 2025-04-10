@@ -211,9 +211,10 @@ async def respond(
     model = load_chat_model(configuration.response_model)
     # TODO: add a re-ranker here
     top_k = 20
-    context = format_docs(state.documents[:top_k])
-    prompt = configuration.response_system_prompt.format(context=context)
-    messages = [{"role": "system", "content": prompt}] + state.messages
+    # context = format_docs(state.documents[:top_k])
+    # prompt = configuration.response_system_prompt.format(context=context)
+    # messages = [{"role": "system", "content": prompt}] + state.messages
+    messages = state.messages
     response = await model.ainvoke(messages)
     return {"messages": [response], "answer": response.content}
 
@@ -222,15 +223,16 @@ async def respond(
 
 
 builder = StateGraph(AgentState, input=InputState, config_schema=AgentConfiguration)
-builder.add_node(create_research_plan)
-builder.add_node(conduct_research)
+# builder.add_node(create_research_plan)
+# builder.add_node(conduct_research)
 builder.add_node(respond)
 
-builder.add_edge(START, "create_research_plan")
-builder.add_edge("create_research_plan", "conduct_research")
-builder.add_conditional_edges("conduct_research", check_finished)
+# builder.add_edge(START, "create_research_plan")
+# builder.add_edge("create_research_plan", "conduct_research")
+# builder.add_conditional_edges("conduct_research", check_finished)
+builder.add_edge(START, "respond")
 builder.add_edge("respond", END)
 
 # Compile into a graph object that you can invoke and deploy.
 graph = builder.compile()
-graph.name = "RetrievalGraph"
+graph.name = "PetoPeta"

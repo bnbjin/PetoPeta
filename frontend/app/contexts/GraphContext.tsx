@@ -122,7 +122,16 @@ export function GraphProvider({ children }: { children: ReactNode }) {
       const progressAIMessageId = uuidv4();
       let hasProgressBeenSet = false;
 
+      /*处理消息的核心逻辑
+      chunk.data.event主要是氛围三种:
+        on_chat_model_stream: 处理AI消息
+        on_chain_start: 处理节点开始
+        on_chain_end: 处理节点结束
+      */
       for await (const chunk of stream) {
+        console.log(chunk.data.event);
+        console.log(chunk?.data?.metadata?.langgraph_node);
+
         if (!runId && chunk.data?.metadata?.run_id) {
           _runId = chunk.data.metadata.run_id;
           setRunId(_runId ?? "");
@@ -501,6 +510,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
               );
               if (existingMessageIndex !== -1) {
                 // Create a new array with the updated message
+                // 对正在处理的响应消息，先插入一条Progress的AI信息
                 return [
                   ...prevMessages.slice(0, existingMessageIndex),
                   new AIMessage({
@@ -534,6 +544,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
                 (pMsg) => pMsg.id === message.id,
               );
               if (existingMessageIndex !== -1) {
+                // 处理对已存在的消息的Respond，加入消息同时添加文档链接
                 const newMessageWithLinks = new AIMessage({
                   ...message,
                   content: addDocumentLinks(message.content, inputDocuments),
@@ -622,29 +633,29 @@ export function GraphProvider({ children }: { children: ReactNode }) {
         if (isLastAiMessage) {
           const routerMessage = threadValues.router
             ? new AIMessage({
-                content: "",
-                id: uuidv4(),
-                tool_calls: [
-                  {
-                    name: "router_logic",
-                    args: threadValues.router,
-                  },
-                ],
-              })
+              content: "",
+              id: uuidv4(),
+              tool_calls: [
+                {
+                  name: "router_logic",
+                  args: threadValues.router,
+                },
+              ],
+            })
             : undefined;
           const selectedDocumentsAIMessage = threadValues.documents?.length
             ? new AIMessage({
-                content: "",
-                id: uuidv4(),
-                tool_calls: [
-                  {
-                    name: "selected_documents",
-                    args: {
-                      documents: threadValues.documents,
-                    },
+              content: "",
+              id: uuidv4(),
+              tool_calls: [
+                {
+                  name: "selected_documents",
+                  args: {
+                    documents: threadValues.documents,
                   },
-                ],
-              })
+                },
+              ],
+            })
             : undefined;
           const answerHeaderToolMsg = new AIMessage({
             content: "",
