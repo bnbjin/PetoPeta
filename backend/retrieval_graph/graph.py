@@ -39,12 +39,16 @@ async def analyze_and_route_query(
 
     configuration = AgentConfiguration.from_runnable_config(config)
     model = load_chat_model(configuration.query_model)
+
     messages = [
         {"role": "system", "content": configuration.router_system_prompt}
     ] + state.messages
+
     response = cast(
-        Router, await model.with_structured_output(Router).ainvoke(messages)
+        Router,
+        await model.with_structured_output(Router).ainvoke(messages),
     )
+
     return {"router": response}
 
 
@@ -63,11 +67,11 @@ def route_query(
         ValueError: If an unknown router type is encountered.
     """
     _type = state.router["type"]
-    if _type == "langchain":
+    if _type == "pet-nutrition":
         return "create_research_plan"
     elif _type == "more-info":
         return "ask_for_more_info"
-    elif _type == "general":
+    elif _type == "general" or _type == "pet-health" or _type == "pet-training":
         return "respond_to_general_query"
     else:
         raise ValueError(f"Unknown router type {_type}")
@@ -124,7 +128,7 @@ async def respond_to_general_query(
 async def create_research_plan(
     state: AgentState, *, config: RunnableConfig
 ) -> dict[str, list[str]]:
-    """Create a step-by-step research plan for answering a LangChain-related query.
+    """Create a step-by-step research plan for answering a pet-related query.
 
     Args:
         state (AgentState): The current state of the agent, including conversation history.
@@ -211,26 +215,29 @@ async def respond(
     model = load_chat_model(configuration.response_model)
     # TODO: add a re-ranker here
     top_k = 20
-    # context = format_docs(state.documents[:top_k])
-    # prompt = configuration.response_system_prompt.format(context=context)
-    # messages = [{"role": "system", "content": prompt}] + state.messages
-    messages = state.messages
+    context = format_docs(state.documents[:top_k])
+    prompt = configuration.response_system_prompt.format(context=context)
+    messages = [{"role": "system", "content": prompt}] + state.messages
     response = await model.ainvoke(messages)
     return {"messages": [response], "answer": response.content}
 
 
 # Define the graph
-
-
 builder = StateGraph(AgentState, input=InputState, config_schema=AgentConfiguration)
-# builder.add_node(create_research_plan)
-# builder.add_node(conduct_research)
+
+builder.add_node(analyze_and_route_query)
+builder.add_node(ask_for_more_info)
+builder.add_node(respond_to_general_query)
+builder.add_node(create_research_plan)
+builder.add_node(conduct_research)
 builder.add_node(respond)
 
-# builder.add_edge(START, "create_research_plan")
-# builder.add_edge("create_research_plan", "conduct_research")
-# builder.add_conditional_edges("conduct_research", check_finished)
-builder.add_edge(START, "respond")
+builder.add_edge(START, "analyze_and_route_query")
+builder.add_conditional_edges("analyze_and_route_query", route_query)
+builder.add_edge("ask_for_more_info", END)
+builder.add_edge("respond_to_general_query", END)
+builder.add_edge("create_research_plan", "conduct_research")
+builder.add_conditional_edges("conduct_research", check_finished)
 builder.add_edge("respond", END)
 
 # Compile into a graph object that you can invoke and deploy.

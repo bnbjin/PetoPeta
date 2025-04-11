@@ -11,6 +11,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.constants import Send
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
+from langchain_community.retrievers import TavilySearchAPIRetriever
 
 from backend import retrieval
 from backend.retrieval_graph.configuration import AgentConfiguration
@@ -62,9 +63,14 @@ async def retrieve_documents(
     Returns:
         dict[str, list[Document]]: A dictionary with a 'documents' key containing the list of retrieved documents.
     """
-    with retrieval.make_retriever(config) as retriever:
-        response = await retriever.ainvoke(state.query, config)
-        return {"documents": response}
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
+    retriever = TavilySearchAPIRetriever(k=3)
+    retrival_chain = retriever | format_docs
+    response = await retrival_chain.ainvoke(state.query, config)
+    return {"documents": response}
 
 
 def retrieve_in_parallel(state: ResearcherState) -> list[Send]:

@@ -129,9 +129,6 @@ export function GraphProvider({ children }: { children: ReactNode }) {
         on_chain_end: 处理节点结束
       */
       for await (const chunk of stream) {
-        console.log(chunk.data.event);
-        console.log(chunk?.data?.metadata?.langgraph_node);
-
         if (!runId && chunk.data?.metadata?.run_id) {
           _runId = chunk.data.metadata.run_id;
           setRunId(_runId ?? "");
