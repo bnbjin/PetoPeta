@@ -2,10 +2,10 @@ import { useThreadRuntime } from "@assistant-ui/react";
 import { Card, CardTitle } from "./ui/card";
 
 const suggestedQuestions = [
-  "How do I use a RecursiveUrlLoader to load content from a page?",
-  "How can I define the state schema for my LangGraph graph?",
-  "How can I run a model locally on my laptop with Ollama?",
-  "Explain RAG techniques and how LangGraph can implement them.",
+  "I have a corgi of 4 years old named Mango, 17kg of weight, female. Help me make a healthy and nutritional diet plan for her so to lose the weight.",
+  "Can a cat eat watermelon?",
+  "What is the best weight for a husky of 5 years old?",
+  "What can you do?",
 ];
 
 export function SuggestedQuestions() {
