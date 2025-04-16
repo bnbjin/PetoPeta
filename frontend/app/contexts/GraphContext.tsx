@@ -65,7 +65,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
   const { shareRun } = useRuns();
   const [messages, setMessages] = useState<BaseMessage[]>([]);
   const [selectedModel, setSelectedModel] = useState<ModelOptions>(
-    "anthropic/claude-3-5-haiku-20241022",
+    "xai/grok-3-fast",
   );
   const [_threadId, setThreadId] = useQueryState("threadId");
 
