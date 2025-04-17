@@ -12,6 +12,7 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langchain_core.output_parsers import PydanticOutputParser
+from langgraph.types import Command
 
 from backend.retrieval_graph.configuration import AgentConfiguration
 from backend.retrieval_graph.pet_manager.graph import get_pet_manager_graph
@@ -29,7 +30,9 @@ from backend.utils import format_docs, load_chat_model
 
 async def analyze_and_route_query(
     state: AgentState, *, config: RunnableConfig
-) -> dict[str, Router]:
+) -> Command[
+    Literal["get_and_update_pet_info", "ask_for_more_info", "respond_to_general_query"]
+]:
     """Analyze the user's query and determine the appropriate routing.
 
     This function uses a language model to classify the user's query and decide how to route it
@@ -43,22 +46,33 @@ async def analyze_and_route_query(
         dict[str, Router]: A dictionary containing the 'router' key with the classification result (classification type and logic).
     """
     # allow skipping the router for testing
-    if state.router and state.router["logic"]:
-        return {"router": state.router}
+    router = state.router
+    if not (router["type"] and router["logic"]):
+        configuration = AgentConfiguration.from_runnable_config(config)
+        model = load_chat_model(configuration.query_model)
 
-    configuration = AgentConfiguration.from_runnable_config(config)
-    model = load_chat_model(configuration.query_model)
+        messages = [
+            {"role": "system", "content": configuration.router_system_prompt}
+        ] + state.messages
 
-    messages = [
-        {"role": "system", "content": configuration.router_system_prompt}
-    ] + state.messages
+        router = cast(
+            Router,
+            await model.with_structured_output(Router).ainvoke(messages),
+        )
 
-    response = cast(
-        Router,
-        await model.with_structured_output(Router).ainvoke(messages),
+    goto = None
+    match router["type"]:
+        case "pet-nutrition":
+            goto = "get_and_update_pet_info"
+        case "more-info":
+            goto = "ask_for_more_info"
+        case _:
+            goto = "respond_to_general_query"
+
+    return Command(
+        update={"router": router},
+        goto=goto,
     )
-
-    return {"router": response}
 
 
 def route_query(
@@ -201,7 +215,9 @@ async def create_research_plan(
     }
 
 
-async def conduct_research(state: AgentState) -> dict[str, Any]:
+async def conduct_research(
+    state: AgentState,
+) -> Command[Literal["respond", "conduct_research"]]:
     """Execute the first step of the research plan.
 
     This function takes the first step from the research plan and uses it to conduct research.
@@ -219,10 +235,17 @@ async def conduct_research(state: AgentState) -> dict[str, Any]:
     """
 
     if len(state.steps) == 0:
-        return {"documents": [], "steps": []}
+        return Command(
+            update={"documents": [], "steps": []},
+            goto="respond",
+        )
 
     result = await researcher_graph.ainvoke({"question": state.steps[0]})
-    return {"documents": result["documents"], "steps": state.steps[1:]}
+
+    return Command(
+        update={"documents": result["documents"], "steps": state.steps[1:]},
+        goto="conduct_research",
+    )
 
 
 def check_finished(state: AgentState) -> Literal["respond", "conduct_research"]:
@@ -281,12 +304,12 @@ builder.add_node(conduct_research)
 builder.add_node(respond)
 
 builder.add_edge(START, "analyze_and_route_query")
-builder.add_conditional_edges("analyze_and_route_query", route_query)
+# builder.add_conditional_edges("analyze_and_route_query", route_query)
 builder.add_edge("ask_for_more_info", END)
 builder.add_edge("respond_to_general_query", END)
 builder.add_edge("get_and_update_pet_info", "create_research_plan")
 builder.add_edge("create_research_plan", "conduct_research")
-builder.add_conditional_edges("conduct_research", check_finished)
+# builder.add_conditional_edges("conduct_research", check_finished)
 builder.add_edge("respond", END)
 
 # Compile into a graph object that you can invoke and deploy.

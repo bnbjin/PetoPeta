@@ -4,11 +4,11 @@ This module defines the core structure and functionality of the researcher graph
 which is responsible for generating search queries and retrieving relevant documents.
 """
 
-from typing import cast
+from typing import Sequence, cast, Literal
 
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
-from langgraph.constants import Send
+from langgraph.types import Command, Send
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 from langchain_community.retrievers import TavilySearchAPIRetriever
@@ -21,7 +21,7 @@ from backend.utils import load_chat_model
 
 async def generate_queries(
     state: ResearcherState, *, config: RunnableConfig
-) -> dict[str, list[str]]:
+) -> Command[Literal["retrieve_documents"]]:
     """Generate search queries based on the question (a step in the research plan).
 
     This function uses a language model to generate diverse search queries to help answer the question.
@@ -46,7 +46,13 @@ async def generate_queries(
     response = cast(
         Response, await model.ainvoke(messages, {"tags": ["langsmith:nostream"]})
     )
-    return {"queries": response["queries"]}
+    # return {"queries": response["queries"]}
+
+    return Command(
+        goto=[
+            Send("retrieve_documents", QueryState(query=q)) for q in response["queries"]
+        ]
+    )
 
 
 async def retrieve_documents(
@@ -98,11 +104,11 @@ builder = StateGraph(ResearcherState)
 builder.add_node(generate_queries)
 builder.add_node(retrieve_documents)
 builder.add_edge(START, "generate_queries")
-builder.add_conditional_edges(
-    "generate_queries",
-    retrieve_in_parallel,  # type: ignore
-    path_map=["retrieve_documents"],
-)
+# builder.add_conditional_edges(
+#     "generate_queries",
+#     retrieve_in_parallel,  # type: ignore
+#     path_map=["retrieve_documents"],
+# )
 builder.add_edge("retrieve_documents", END)
 # Compile into a graph object that you can invoke and deploy.
 graph = builder.compile()
