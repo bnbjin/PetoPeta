@@ -26,7 +26,7 @@ async def add_or_update_pet(
 ) -> str:
     store = get_store()
 
-    user_id = config.get("configurable", {}).get("user_id", "test_user_id")
+    user_id = config.get("metadata", {}).get("user_id", "test_user_id")
     if not user_id.strip():
         user_id = "test_user_id"
     namespace = ("pets", user_id)
@@ -52,7 +52,7 @@ async def add_or_update_pet(
 async def get_pets(*, config: RunnableConfig) -> List[Dict]:
     store = get_store()
 
-    user_id = config.get("configurable", {}).get("user_id", "test_user_id")
+    user_id = config.get("metadata", {}).get("user_id", "test_user_id")
     # TODO user_id 总是返回空字符串，这可能和config的实现有关，后续持续跟进
 
     if not user_id.strip():
@@ -76,7 +76,7 @@ async def delete_pet(
     config: RunnableConfig,
     store: Annotated[BaseStore, InjectedStore()],
 ) -> str:
-    user_id = config.get("configurable", {}).get("user_id", "test_user_id")
+    user_id = config.get("metadata", {}).get("user_id", "test_user_id")
     if not user_id.strip():
         user_id = "test_user_id"
     namespace = ("pets", user_id)
