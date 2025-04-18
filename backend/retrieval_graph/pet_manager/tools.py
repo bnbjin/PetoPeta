@@ -52,11 +52,11 @@ async def add_or_update_pet(
 
 @tool(description=TOOL_GET_PETS_DESCRIPTION)
 async def get_pets(*, config: RunnableConfig) -> List[Dict]:
-    store = get_store()
-
     user_id = config.get("metadata", {}).get("user_id")
     if not user_id:
         return []
+
+    store = get_store()
 
     namespace = ("pets", user_id)
 
