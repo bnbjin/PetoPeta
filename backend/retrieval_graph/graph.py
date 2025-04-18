@@ -166,9 +166,7 @@ async def get_and_update_pet_info(
     # return {"pets": response.model_dump().get("pets", [])}
 
     response = await pet_filter_graph.ainvoke({"messages": state.messages})
-    target_pets = response.get("target_pets_recorded", []) + response.get(
-        "new_pets_invalid", []
-    )
+    target_pets = response.get("result_pets", [])
     return {"pets": target_pets}
 
 
@@ -240,7 +238,9 @@ async def conduct_research(
             goto="respond",
         )
 
-    result = await researcher_graph.ainvoke({"question": state.steps[0]})
+    result = await researcher_graph.ainvoke(
+        {"question": state.steps[0], "pet": state.pets[0]}
+    )
 
     return Command(
         update={"documents": result["documents"], "steps": state.steps[1:]},
@@ -287,7 +287,13 @@ async def respond(
     top_k = 20
     context = format_docs(state.documents[:top_k])
     prompt = configuration.response_system_prompt.format(context=context)
-    messages = [{"role": "system", "content": prompt}] + state.messages
+    messages = [
+        {"role": "system", "content": prompt},
+        {
+            "role": "ai",
+            "content": f"<pet-information> {state.pets[0]} </pet-information>",
+        },
+    ] + state.messages
     response = await model.ainvoke(messages)
     return {"messages": [response], "answer": response.content}
 

@@ -9,6 +9,7 @@ from typing import Annotated
 from langchain_core.documents import Document
 
 from backend.utils import reduce_docs
+from backend.retrieval_graph.state import Pet
 
 
 @dataclass(kw_only=True)
@@ -28,3 +29,4 @@ class ResearcherState:
     """A list of search queries based on the question that the researcher generates."""
     documents: Annotated[list[Document], reduce_docs] = field(default_factory=list)
     """Populated by the retriever. This is a list of documents that the agent can reference."""
+    pet: Pet = field(default_factory=Pet)

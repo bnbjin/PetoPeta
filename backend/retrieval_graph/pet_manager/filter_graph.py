@@ -27,9 +27,9 @@ class PetInformationFilterState(InputState):
 
     target_pets_recorded: List[Dict] = field(default_factory=list)
 
-    new_pets_valid: List[Pet] = field(default_factory=list)
+    new_pets: List[Pet] = field(default_factory=list)
 
-    new_pets_invalid: List[Pet] = field(default_factory=list)
+    result_pets: List[Pet] = field(default_factory=list)
 
 
 async def get_all_recorded_pets(
@@ -93,7 +93,7 @@ async def filter_pets_not_recorded(
     response = await model.with_structured_output(PetList).ainvoke(messages)
     response = cast(PetList, response)
 
-    return {"new_pets_invalid": response.pets}
+    return {"new_pets": response.pets}
 
 
 async def add_new_pets_to_storage(
@@ -101,7 +101,7 @@ async def add_new_pets_to_storage(
     *,
     config: RunnableConfig,
 ) -> Dict:
-    for pet in state.new_pets_invalid:
+    for pet in state.new_pets:
         is_valid = []
         for must_have_key in ["name", "species"]:
             is_valid.append(pet.get(must_have_key, "") != "")
@@ -110,17 +110,38 @@ async def add_new_pets_to_storage(
     return {}
 
 
+async def assembile_filter_pets(
+    state: PetInformationFilterState,
+    *,
+    config: RunnableConfig,
+) -> Dict:
+    result_pets = []
+    result_pets.extend(state.target_pets_recorded)
+    for pet in state.new_pets:
+        is_valid = []
+        for must_have_key in ["species"]:
+            is_valid.append(pet.get(must_have_key, "") != "")
+        if all(is_valid):
+            result_pets.append(pet)
+
+    return {
+        "result_pets": result_pets,
+    }
+
+
 builder = StateGraph(PetInformationFilterState)
 
 builder.add_node(get_all_recorded_pets)
 builder.add_node(filter_pets_recorded)
 builder.add_node(filter_pets_not_recorded)
 builder.add_node(add_new_pets_to_storage)
+builder.add_node(assembile_filter_pets)
 builder.add_edge(START, "get_all_recorded_pets")
 builder.add_edge("get_all_recorded_pets", "filter_pets_recorded")
 builder.add_edge("filter_pets_recorded", "filter_pets_not_recorded")
 builder.add_edge("filter_pets_not_recorded", "add_new_pets_to_storage")
-builder.add_edge("add_new_pets_to_storage", END)
+builder.add_edge("add_new_pets_to_storage", "assembile_filter_pets")
+builder.add_edge("assembile_filter_pets", END)
 
 graph = builder.compile()
 graph.name = "PetInformationFilterGraph"

@@ -41,6 +41,7 @@ async def generate_queries(
     model = load_chat_model(configuration.query_model).with_structured_output(Response)
     messages = [
         {"role": "system", "content": configuration.generate_queries_system_prompt},
+        {"role": "ai", "content": f"<pet-information> {state.pet} </pet-information>"},
         {"role": "human", "content": state.question},
     ]
     response = cast(

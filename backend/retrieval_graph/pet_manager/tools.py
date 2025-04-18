@@ -23,12 +23,13 @@ async def add_or_update_pet(
     *,
     config: RunnableConfig,
     # store: Annotated[BaseStore, InjectedStore()],
-) -> str:
+):
     store = get_store()
 
-    user_id = config.get("metadata", {}).get("user_id", "test_user_id")
-    if not user_id.strip():
-        user_id = "test_user_id"
+    user_id = config.get("metadata", {}).get("user_id")
+    if not user_id:
+        return
+
     namespace = ("pets", user_id)
 
     pets = await store.asearch(namespace)
@@ -43,20 +44,20 @@ async def add_or_update_pet(
         "extra_condition": extra_condition,
     }
 
-    await store.aput(namespace, f"pet_{name}", cur_pet)
+    if cur_pet["name"] and cur_pet["species"]:
+        await store.aput(namespace, f"pet_{name}", cur_pet)
 
-    return NEW_PET_ADDED_LETTER.format(name=name)
+    # return NEW_PET_ADDED_LETTER.format(name=name)
 
 
 @tool(description=TOOL_GET_PETS_DESCRIPTION)
 async def get_pets(*, config: RunnableConfig) -> List[Dict]:
     store = get_store()
 
-    user_id = config.get("metadata", {}).get("user_id", "test_user_id")
-    # TODO user_id 总是返回空字符串，这可能和config的实现有关，后续持续跟进
+    user_id = config.get("metadata", {}).get("user_id")
+    if not user_id:
+        return []
 
-    if not user_id.strip():
-        user_id = "test_user_id"
     namespace = ("pets", user_id)
 
     pets = await store.asearch(namespace)
@@ -76,9 +77,10 @@ async def delete_pet(
     config: RunnableConfig,
     store: Annotated[BaseStore, InjectedStore()],
 ) -> str:
-    user_id = config.get("metadata", {}).get("user_id", "test_user_id")
-    if not user_id.strip():
-        user_id = "test_user_id"
+    user_id = config.get("metadata", {}).get("user_id")
+    if not user_id:
+        return NO_PET_FOUND_STR
+
     namespace = ("pets", user_id)
 
     pets = await store.asearch(namespace)
