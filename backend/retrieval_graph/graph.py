@@ -64,6 +64,10 @@ async def analyze_and_route_query(
     match router["type"]:
         case "pet-nutrition":
             goto = "get_and_update_pet_info"
+        case "pet-training":
+            goto = "get_and_update_pet_info"
+        case "pet-health":
+            goto = "get_and_update_pet_info"
         case "more-info":
             goto = "ask_for_more_info"
         case _:
