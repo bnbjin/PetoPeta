@@ -46,19 +46,18 @@ async def analyze_and_route_query(
         dict[str, Router]: A dictionary containing the 'router' key with the classification result (classification type and logic).
     """
     # allow skipping the router for testing
-    router = state.router
-    if not (router["type"] and router["logic"]):
-        configuration = AgentConfiguration.from_runnable_config(config)
-        model = load_chat_model(configuration.query_model)
 
-        messages = [
-            {"role": "system", "content": configuration.router_system_prompt}
-        ] + state.messages
+    configuration = AgentConfiguration.from_runnable_config(config)
+    model = load_chat_model(configuration.query_model)
 
-        router = cast(
-            Router,
-            await model.with_structured_output(Router).ainvoke(messages),
-        )
+    messages = [
+        {"role": "system", "content": configuration.router_system_prompt}
+    ] + state.messages
+
+    router = cast(
+        Router,
+        await model.with_structured_output(Router).ainvoke(messages),
+    )
 
     goto = None
     match router["type"]:
