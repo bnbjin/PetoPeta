@@ -428,6 +428,42 @@ export function GraphProvider({ children }: { children: ReactNode }) {
               }
             });
           }
+
+          if (chunk.data.metadata.langgraph_node === "ask_for_more_info") {
+            const message = chunk.data.data.chunk;
+            setMessages((prevMessages) => {
+              const existingMessageIndex = prevMessages.findIndex(
+                (msg) => msg.id === message.id,
+              );
+              if (existingMessageIndex !== -1) {
+                // Create a new array with the updated message
+                return [
+                  ...prevMessages.slice(0, existingMessageIndex),
+                  new AIMessage({
+                    ...prevMessages[existingMessageIndex],
+                    content:
+                      prevMessages[existingMessageIndex].content +
+                      message.content,
+                  }),
+                  ...prevMessages.slice(existingMessageIndex + 1),
+                ];
+              } else {
+                const answerHeaderToolMsg = new AIMessage({
+                  content: "",
+                  tool_calls: [
+                    {
+                      name: "answer_header",
+                      args: {},
+                    },
+                  ],
+                });
+                const newMessage = new AIMessage({
+                  ...message,
+                });
+                return [...prevMessages, answerHeaderToolMsg, newMessage];
+              }
+            });
+          }
         }
 
         if (chunk.data.event === "on_chain_end") {
