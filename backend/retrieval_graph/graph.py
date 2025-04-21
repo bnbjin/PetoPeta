@@ -61,11 +61,11 @@ async def analyze_and_route_query(
 
     goto = None
     match router["type"]:
-        case "pet-nutrition":
+        case "health":
             goto = "get_and_update_pet_info"
-        case "pet-training":
+        case "behavior":
             goto = "get_and_update_pet_info"
-        case "pet-health":
+        case "disease":
             goto = "get_and_update_pet_info"
         case "more-info":
             goto = "ask_for_more_info"
@@ -78,33 +78,33 @@ async def analyze_and_route_query(
     )
 
 
-def route_query(
-    state: AgentState,
-) -> Literal[
-    "get_and_update_pet_info",
-    "ask_for_more_info",
-    "respond_to_general_query",
-]:
-    """Determine the next step based on the query classification.
+# def route_query(
+#     state: AgentState,
+# ) -> Literal[
+#     "get_and_update_pet_info",
+#     "ask_for_more_info",
+#     "respond_to_general_query",
+# ]:
+#     """Determine the next step based on the query classification.
 
-    Args:
-        state (AgentState): The current state of the agent, including the router's classification.
+#     Args:
+#         state (AgentState): The current state of the agent, including the router's classification.
 
-    Returns:
-        Literal["get_and_update_pet_info", "ask_for_more_info", "respond_to_general_query"]: The next step to take.
+#     Returns:
+#         Literal["get_and_update_pet_info", "ask_for_more_info", "respond_to_general_query"]: The next step to take.
 
-    Raises:
-        ValueError: If an unknown router type is encountered.
-    """
-    _type = state.router["type"]
-    if _type == "pet-nutrition":
-        return "get_and_update_pet_info"
-    elif _type == "more-info":
-        return "ask_for_more_info"
-    elif _type == "general" or _type == "pet-health" or _type == "pet-training":
-        return "respond_to_general_query"
-    else:
-        raise ValueError(f"Unknown router type {_type}")
+#     Raises:
+#         ValueError: If an unknown router type is encountered.
+#     """
+#     _type = state.router["type"]
+#     if _type == "pet-nutrition":
+#         return "get_and_update_pet_info"
+#     elif _type == "more-info":
+#         return "ask_for_more_info"
+#     elif _type == "general" or _type == "pet-health" or _type == "pet-training":
+#         return "respond_to_general_query"
+#     else:
+#         raise ValueError(f"Unknown router type {_type}")
 
 
 async def ask_for_more_info(

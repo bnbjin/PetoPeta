@@ -65,8 +65,7 @@ class Router(TypedDict):
     """Classify user query."""
 
     logic: str
-    # type: Literal["more-info", "langchain", "general"]
-    type: Literal["more-info", "pet-health", "pet-training", "pet-nutrition", "general"]
+    type: Literal["more-info", "health", "behavior", "disease", "general"]
 
 
 class Pet(TypedDict):
