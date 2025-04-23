@@ -6,16 +6,14 @@ and key functions for processing & routing user queries, generating research pla
 conducting research, and formulating responses.
 """
 
-from typing import Any, Literal, TypedDict, cast
+from typing import Literal, TypedDict, cast, Union
 
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
-from langchain_core.output_parsers import PydanticOutputParser
 from langgraph.types import Command
 
 from backend.retrieval_graph.configuration import AgentConfiguration
-from backend.retrieval_graph.pet_manager.graph import get_pet_manager_graph
 from backend.retrieval_graph.researcher_graph.graph import graph as researcher_graph
 from backend.retrieval_graph.pet_manager.filter_graph import graph as pet_filter_graph
 from backend.retrieval_graph.state import (
@@ -23,7 +21,6 @@ from backend.retrieval_graph.state import (
     InputState,
     Router,
     Pet,
-    PetList,
 )
 from backend.utils import format_docs, load_chat_model
 
@@ -45,7 +42,6 @@ async def analyze_and_route_query(
     Returns:
         dict[str, Router]: A dictionary containing the 'router' key with the classification result (classification type and logic).
     """
-    # allow skipping the router for testing
 
     configuration = AgentConfiguration.from_runnable_config(config)
     model = load_chat_model(configuration.query_model)
@@ -76,35 +72,6 @@ async def analyze_and_route_query(
         update={"router": router},
         goto=goto,
     )
-
-
-# def route_query(
-#     state: AgentState,
-# ) -> Literal[
-#     "get_and_update_pet_info",
-#     "ask_for_more_info",
-#     "respond_to_general_query",
-# ]:
-#     """Determine the next step based on the query classification.
-
-#     Args:
-#         state (AgentState): The current state of the agent, including the router's classification.
-
-#     Returns:
-#         Literal["get_and_update_pet_info", "ask_for_more_info", "respond_to_general_query"]: The next step to take.
-
-#     Raises:
-#         ValueError: If an unknown router type is encountered.
-#     """
-#     _type = state.router["type"]
-#     if _type == "pet-nutrition":
-#         return "get_and_update_pet_info"
-#     elif _type == "more-info":
-#         return "ask_for_more_info"
-#     elif _type == "general" or _type == "pet-health" or _type == "pet-training":
-#         return "respond_to_general_query"
-#     else:
-#         raise ValueError(f"Unknown router type {_type}")
 
 
 async def ask_for_more_info(
@@ -160,13 +127,7 @@ async def get_and_update_pet_info(
     *,
     config: RunnableConfig,
 ) -> dict[str, list[Pet]]:
-    """Get and update pet info."""
-
-    # pet_manager_graph = await get_pet_manager_graph()
-    # chain = pet_manager_graph | PydanticOutputParser(pydantic_object=PetList)
-    # response = await chain.ainvoke({"messages": state.messages})
-
-    # return {"pets": response.model_dump().get("pets", [])}
+    """filter and update pet info."""
 
     response = await pet_filter_graph.ainvoke({"messages": state.messages})
     target_pets = response.get("result_pets", [])
@@ -175,7 +136,7 @@ async def get_and_update_pet_info(
 
 async def create_research_plan(
     state: AgentState, *, config: RunnableConfig
-) -> dict[str, list[str]]:
+) -> dict[str, Union[list[str], str]]:
     """Create a step-by-step research plan for answering a pet-related query.
 
     Args:
@@ -192,7 +153,7 @@ async def create_research_plan(
         steps: list[str]
 
     if len(state.pets) == 0:
-        return {"steps": [], "documents": "delete", "query": state.messages[-1].content}
+        return {"steps": [], "documents": "delete"}
 
     configuration = AgentConfiguration.from_runnable_config(config)
     model = load_chat_model(configuration.query_model).with_structured_output(Plan)
@@ -212,7 +173,7 @@ async def create_research_plan(
     return {
         "steps": response["steps"],
         "documents": "delete",
-        "query": state.messages[-1].content,
+        # "query": state.messages[-1].content,
     }
 
 
@@ -272,7 +233,7 @@ def check_finished(state: AgentState) -> Literal["respond", "conduct_research"]:
 
 async def respond(
     state: AgentState, *, config: RunnableConfig
-) -> dict[str, list[BaseMessage]]:
+) -> dict[str, Union[list[BaseMessage], str]]:
     """Generate a final response to the user's query based on the conducted research.
 
     This function formulates a comprehensive answer using the conversation history and the documents retrieved by the researcher.
@@ -284,9 +245,10 @@ async def respond(
     Returns:
         dict[str, list[str]]: A dictionary with a 'messages' key containing the generated response.
     """
+
     configuration = AgentConfiguration.from_runnable_config(config)
     model = load_chat_model(configuration.response_model)
-    # TODO: add a re-ranker here
+
     top_k = 20
     context = format_docs(state.documents[:top_k])
     prompt = configuration.response_system_prompt.format(context=context)
@@ -294,7 +256,7 @@ async def respond(
         {"role": "system", "content": prompt},
         {
             "role": "ai",
-            "content": f"<pet-information> {state.pets[0]} </pet-information>",
+            "content": f"<pet-information> {state.pets[0] if state.pets else 'no pet found information'} </pet-information>",
         },
     ] + state.messages
     response = await model.ainvoke(messages)
@@ -313,12 +275,10 @@ builder.add_node(conduct_research)
 builder.add_node(respond)
 
 builder.add_edge(START, "analyze_and_route_query")
-# builder.add_conditional_edges("analyze_and_route_query", route_query)
 builder.add_edge("ask_for_more_info", END)
 builder.add_edge("respond_to_general_query", END)
 builder.add_edge("get_and_update_pet_info", "create_research_plan")
 builder.add_edge("create_research_plan", "conduct_research")
-# builder.add_conditional_edges("conduct_research", check_finished)
 builder.add_edge("respond", END)
 
 # Compile into a graph object that you can invoke and deploy.

@@ -4,7 +4,7 @@ This module defines the core structure and functionality of the researcher graph
 which is responsible for generating search queries and retrieving relevant documents.
 """
 
-from typing import Sequence, cast, Literal
+from typing import cast, Literal, Union
 
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
@@ -13,7 +13,6 @@ from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 from langchain_community.retrievers import TavilySearchAPIRetriever
 
-from backend import retrieval
 from backend.retrieval_graph.configuration import AgentConfiguration
 from backend.retrieval_graph.researcher_graph.state import QueryState, ResearcherState
 from backend.utils import load_chat_model
@@ -47,7 +46,6 @@ async def generate_queries(
     response = cast(
         Response, await model.ainvoke(messages, {"tags": ["langsmith:nostream"]})
     )
-    # return {"queries": response["queries"]}
 
     return Command(
         goto=[
@@ -58,7 +56,7 @@ async def generate_queries(
 
 async def retrieve_documents(
     state: QueryState, *, config: RunnableConfig
-) -> dict[str, list[Document]]:
+) -> dict[str, Union[list[Document], str]]:
     """Retrieve documents based on a given query.
 
     This function uses a retriever to fetch relevant documents for a given query.
@@ -102,15 +100,12 @@ def retrieve_in_parallel(state: ResearcherState) -> list[Send]:
 
 # Define the graph
 builder = StateGraph(ResearcherState)
+
 builder.add_node(generate_queries)
 builder.add_node(retrieve_documents)
+
 builder.add_edge(START, "generate_queries")
-# builder.add_conditional_edges(
-#     "generate_queries",
-#     retrieve_in_parallel,  # type: ignore
-#     path_map=["retrieve_documents"],
-# )
 builder.add_edge("retrieve_documents", END)
-# Compile into a graph object that you can invoke and deploy.
+
 graph = builder.compile()
 graph.name = "ResearcherGraph"

@@ -4,7 +4,7 @@ This module defines the state structures used in the researcher graph.
 """
 
 from dataclasses import dataclass, field
-from typing import Annotated
+from typing import Annotated, Dict, Any
 
 from langchain_core.documents import Document
 
@@ -29,4 +29,4 @@ class ResearcherState:
     """A list of search queries based on the question that the researcher generates."""
     documents: Annotated[list[Document], reduce_docs] = field(default_factory=list)
     """Populated by the retriever. This is a list of documents that the agent can reference."""
-    pet: Pet = field(default_factory=Pet)
+    pet: Dict[str, Any] = field(default_factory=dict)

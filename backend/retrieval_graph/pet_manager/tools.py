@@ -1,4 +1,4 @@
-from typing import Annotated, Optional, List, Mapping, cast, Dict
+from typing import Annotated, Optional, List, cast, Dict
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
 from langchain_core.tools import tool
@@ -46,8 +46,6 @@ async def add_or_update_pet(
 
     if cur_pet["name"] and cur_pet["species"]:
         await store.aput(namespace, f"pet_{name}", cur_pet)
-
-    # return NEW_PET_ADDED_LETTER.format(name=name)
 
 
 @tool(description=TOOL_GET_PETS_DESCRIPTION)
