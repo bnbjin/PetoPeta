@@ -1,10 +1,11 @@
 import re
 from typing import Generator
 
-from bs4 import BeautifulSoup, Doctype, NavigableString, Tag
+from bs4 import BeautifulSoup, Doctype, Tag
+from bs4.element import NavigableString
 
 
-def langchain_docs_extractor(soup: BeautifulSoup) -> str:
+def avma_docs_extractor(soup: BeautifulSoup) -> str:
     # Remove all the tags that are not meaningful for the extraction.
     SCAPE_TAGS = ["nav", "footer", "aside", "script", "style"]
     [tag.decompose() for tag in soup.find_all(SCAPE_TAGS)]
@@ -106,5 +107,21 @@ def langchain_docs_extractor(soup: BeautifulSoup) -> str:
                 else:
                     yield from get_text(child)
 
-    joined = "".join(get_text(soup))
+    all_content = []
+    for content_part in soup.select('div[class*="content-box"]'):
+        all_content.append("".join(get_text(content_part)))
+
+    joined = "\n".join(all_content)
     return re.sub(r"\n\n+", "\n\n", joined).strip()
+
+
+def simple_extractor(html: str | BeautifulSoup) -> str:
+    if isinstance(html, str):
+        soup = BeautifulSoup(html, "lxml")
+    elif isinstance(html, BeautifulSoup):
+        soup = html
+    else:
+        raise ValueError(
+            "Input should be either BeautifulSoup object or an HTML string"
+        )
+    return re.sub(r"\n\n+", "\n\n", soup.text).strip()

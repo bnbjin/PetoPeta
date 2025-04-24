@@ -1,15 +1,17 @@
 import os
-from contextlib import contextmanager
-from typing import Iterator
+from contextlib import contextmanager, asynccontextmanager
+from typing import Iterator, AsyncIterator
 
 import weaviate
 from langchain_core.embeddings import Embeddings
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.runnables import RunnableConfig
 from langchain_weaviate import WeaviateVectorStore
+from langchain_postgres import PGVectorStore, PGEngine
 
 from backend.configuration import BaseConfiguration
-from backend.constants import WEAVIATE_DOCS_INDEX_NAME
+from backend.constants import DOCS_INDEX_NAME
+from backend.embeddings import get_embeddings_model
 
 
 def make_text_encoder(model: str) -> Embeddings:
@@ -28,6 +30,8 @@ def make_text_encoder(model: str) -> Embeddings:
 def make_weaviate_retriever(
     configuration: BaseConfiguration, embedding_model: Embeddings
 ) -> Iterator[BaseRetriever]:
+    """Caution: use 0.0.3 version of WeaviateVectorStore, there are bugs with 0.0.4"""
+
     with weaviate.connect_to_weaviate_cloud(
         cluster_url=os.environ["WEAVIATE_URL"],
         auth_credentials=weaviate.classes.init.Auth.api_key(
@@ -37,7 +41,7 @@ def make_weaviate_retriever(
     ) as weaviate_client:
         store = WeaviateVectorStore(
             client=weaviate_client,
-            index_name=WEAVIATE_DOCS_INDEX_NAME,
+            index_name=DOCS_INDEX_NAME,
             text_key="text",
             embedding=embedding_model,
             attributes=["source", "title"],
@@ -64,3 +68,24 @@ def make_retriever(
                 f"Expected one of: {', '.join(BaseConfiguration.__annotations__['retriever_provider'].__args__)}\n"
                 f"Got: {configuration.retriever_provider}"
             )
+
+
+@asynccontextmanager
+async def amake_retriever(
+    config: RunnableConfig,
+) -> AsyncIterator[BaseRetriever]:
+    """Create a retriever for the agent asynchronously, based on the current configuration."""
+
+    configuration = BaseConfiguration.from_runnable_config(config)
+    embedding_model = get_embeddings_model()
+
+    table_name = os.environ["VECTOR_TABLE_NAME"]
+    pg_engine = PGEngine.from_connection_string(url=os.environ["VECTOR_DB_URL"])
+
+    vectorstore = await PGVectorStore.create(
+        engine=pg_engine,
+        table_name=table_name,
+        embedding_service=embedding_model,
+    )
+    search_kwargs = {**configuration.search_kwargs, "return_uuids": True}
+    yield vectorstore.as_retriever(search_kwargs=search_kwargs)

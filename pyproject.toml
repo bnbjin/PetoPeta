@@ -5,7 +5,9 @@ description = ""
 readme = "README.md"
 packages = [{ include = "backend" }]
 dependencies = [
+    "certifi>=2025.1.31",
     "grandalf>=0.8",
+    "soupsieve>=2.7",
 ]
 
 [tool.poetry]

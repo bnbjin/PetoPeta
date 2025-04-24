@@ -4,15 +4,15 @@ This module defines the core structure and functionality of the researcher graph
 which is responsible for generating search queries and retrieving relevant documents.
 """
 
-from typing import cast, Literal, Union
+from typing import cast, Literal, Union, TypedDict
 
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import Command, Send
 from langgraph.graph import END, START, StateGraph
-from typing_extensions import TypedDict
 from langchain_community.retrievers import TavilySearchAPIRetriever
 
+from backend import retrieval
 from backend.retrieval_graph.configuration import AgentConfiguration
 from backend.retrieval_graph.researcher_graph.state import QueryState, ResearcherState
 from backend.utils import load_chat_model
@@ -69,13 +69,22 @@ async def retrieve_documents(
         dict[str, list[Document]]: A dictionary with a 'documents' key containing the list of retrieved documents.
     """
 
-    def format_docs(docs):
-        return "\n\n".join(doc.page_content for doc in docs)
+    docs = []
 
-    retriever = TavilySearchAPIRetriever(k=3)
-    retrival_chain = retriever | format_docs
-    response = await retrival_chain.ainvoke(state.query, config)
-    return {"documents": response}
+    async with retrieval.amake_retriever(config) as library_retriever:
+        library_docs = await library_retriever.ainvoke(state.query, config)
+        docs.extend(library_docs)
+
+    web_retriever = TavilySearchAPIRetriever(k=3)
+    retrival_chain = web_retriever
+    web_docs = await retrival_chain.ainvoke(state.query, config)
+    docs.extend(web_docs)
+
+    # with retrieval.make_retriever(config) as library_retriever:
+    #     library_docs = await library_retriever.ainvoke(state.query, config)
+    #     docs.extend(library_docs)
+
+    return {"documents": docs}
 
 
 def retrieve_in_parallel(state: ResearcherState) -> list[Send]:

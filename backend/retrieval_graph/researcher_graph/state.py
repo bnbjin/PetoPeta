@@ -9,7 +9,6 @@ from typing import Annotated, Dict, Any
 from langchain_core.documents import Document
 
 from backend.utils import reduce_docs
-from backend.retrieval_graph.state import Pet
 
 
 @dataclass(kw_only=True)
