@@ -71,9 +71,9 @@ async def retrieve_documents(
 
     docs = []
 
-    async with retrieval.amake_retriever(config) as library_retriever:
-        library_docs = await library_retriever.ainvoke(state.query, config)
-        docs.extend(library_docs)
+    # async with retrieval.amake_retriever(config) as library_retriever:
+    #     library_docs = await library_retriever.ainvoke(state.query, config)
+    #     docs.extend(library_docs)
 
     web_retriever = TavilySearchAPIRetriever(k=3)
     retrival_chain = web_retriever

@@ -179,17 +179,17 @@ async def create_research_plan(
 
 async def conduct_research(
     state: AgentState,
-) -> Command[Literal["respond", "conduct_research"]]:
+) -> Command[Literal["respond"]]:
     """Execute the first step of the research plan.
 
     This function takes the first step from the research plan and uses it to conduct research.
-
+    
     Args:
         state (AgentState): The current state of the agent, including the research plan steps.
 
     Returns:
-        dict[str, list[str]]: A dictionary with 'documents' containing the research results and
-                              'steps' containing the remaining research steps.
+        Command[Literal["respond"]]: A command to update the state with the retrieved documents and removes the completed step.
+        If add conduct_research to the literal, error will occur. Could be a bug.
 
     Behavior:
         - Invokes the researcher_graph with the first step of the research plan.
