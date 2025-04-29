@@ -35,10 +35,6 @@ dev = [
     "pytest>=7.3.0",
     "ruff>=0.2.2",
     "pandas>=2.2.2",
-    "langgraph-cli>=0.2.7"
-]
-
-[dependency-groups]
-dev = [
+    "langgraph-cli>=0.2.7",
     "langgraph-cli[inmem]>=0.2.7",
 ]
