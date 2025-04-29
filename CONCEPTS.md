@@ -1,7 +1,7 @@
 # Concepts
 
-In this doc we'll go over the different concepts that are implemented in Chat LangChain.
-By the end, you'll have a conceptual understanding of how Chat LangChain works, and it's different architectural components.
+In this doc we'll go over the different concepts that are implemented in Petopeta.
+By the end, you'll have a conceptual understanding of how Petopeta works, and it's different architectural components.
 We'll start with the vector store, the basis of the entire system.
 
 ## Vector Store
@@ -10,7 +10,7 @@ Vector stores, fundamentally, are specialized databases designed to efficiently 
 
 In the context of our application, vector stores play a pivotal role in enhancing the capabilities of our language model. Here's a deeper dive into the process:
 
-1. **Vector Generation**: Whenever new content related to LangChain is introduced or existing content is updated, we use text embedding models to convert this textual information into vectors. Each vector acts as a unique fingerprint of its corresponding text, encapsulating its meaning in a high-dimensional space.
+1. **Vector Generation**: Whenever new content related to pet and animal is introduced or existing content is updated, we use text embedding models to convert this textual information into vectors. Each vector acts as a unique fingerprint of its corresponding text, encapsulating its meaning in a high-dimensional space.
 
 2. **Similarity Searches**: The core utility of storing these vectors comes into play when we need to find information relevant to a user's query. By converting the user's question into a vector using the same embedding model, we can perform a similarity search across our vector store. This search identifies vectors (and thus, documents) whose meanings are closest to the query, based on the distance between vectors in the embedding space.
 

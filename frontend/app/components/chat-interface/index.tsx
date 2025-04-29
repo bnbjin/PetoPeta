@@ -17,7 +17,7 @@ import { AssistantMessage, UserMessage } from "./messages";
 import { ChatComposer, ChatComposerProps } from "./chat-composer";
 import { cn } from "@/app/utils/cn";
 
-export interface ThreadChatProps extends ChatComposerProps {}
+export interface ThreadChatProps extends ChatComposerProps { }
 
 export const ThreadChat: FC<ThreadChatProps> = (props: ThreadChatProps) => {
   const isEmpty = props.messages.length === 0;
@@ -53,9 +53,9 @@ export const ThreadChat: FC<ThreadChatProps> = (props: ThreadChatProps) => {
         <div className="flex items-center justify-center flex-grow my-auto">
           <div className="flex flex-col items-center mx-4 md:mt-0 mt-24">
             <div className="flex flex-row gap-1 items-center justify-center">
-              <p className="text-xl sm:text-2xl">Chat LangChain</p>
+              <p className="text-xl sm:text-2xl">Petopeta</p>
               <NextImage
-                src="/images/lc_logo.jpg"
+                src="/images/lc_logo.png"
                 className="rounded-3xl"
                 alt="LangChain Logo"
                 width={32}
