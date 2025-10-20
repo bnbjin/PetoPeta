@@ -1,6 +1,6 @@
 # PetoPeta
 
-This repo is an implementation of a chatbot specifically focused on question answering over Pet and Animal.
+This repo is an implementation of a ai Agent/Chatbot specifically focused on question answering over Pet and Animal.
 Built with [LangChain](https://github.com/langchain-ai/langchain/), [LangGraph](https://github.com/langchain-ai/langgraph/), and [Next.js](https://nextjs.org).
 
 The app leverages LangChain and LangGraph's streaming support and async API to update the page in real time for multiple users.
